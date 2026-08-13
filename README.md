@@ -1,6 +1,8 @@
 # DOCX Template Updater Tool
 
-A web-based tool that updates DOCX document formatting using a template — without changing any text content.
+A fully client-side web tool that updates DOCX document formatting using a template — without changing any text content. No server, no installs, no accounts needed.
+
+**Live at:** `https://flippurs.github.io/DOCX-Template-Updater-Tool/`
 
 ## How It Works
 
@@ -8,7 +10,9 @@ A web-based tool that updates DOCX document formatting using a template — with
 2. Drag & drop your **template** DOCX (the modern format you want to apply)
 3. Drag & drop one or more **target** DOCX files (the documents to update)
 4. Click **Update Documents**
-5. Download the updated files
+5. Updated files download automatically
+
+All processing happens in your browser — files never leave your computer.
 
 ## What Gets Updated (from template)
 
@@ -27,69 +31,32 @@ A web-based tool that updates DOCX document formatting using a template — with
 - ✅ Tables and their data
 - ✅ Body structure
 
-## Setup & Deployment
+## Hosting (GitHub Pages)
 
-### Prerequisites
+This tool is hosted for free on GitHub Pages. To enable it:
 
-- Node.js 18+
-- Firebase CLI: `npm install -g firebase-tools`
-- A Firebase project (free Spark plan works)
+1. Go to your repo **Settings** → **Pages**
+2. Under "Source", select **Deploy from a branch**
+3. Choose **main** branch and **/ (root)** folder
+4. Click **Save**
+5. Your site will be live at `https://flippurs.github.io/DOCX-Template-Updater-Tool/`
 
-### Initial Setup
+## Running Locally
 
-```bash
-# Login to Firebase
-firebase login
+Just open `index.html` in any browser. No server needed.
 
-# Update .firebaserc with your project ID
-# Replace "your-project-id" with your actual Firebase project ID
+## Tech Stack
 
-# Install function dependencies
-cd functions
-npm install
-cd ..
-```
-
-### Local Testing
-
-```bash
-firebase emulators:start
-```
-
-Then open `http://localhost:5000` in your browser.
-
-### Deploy
-
-```bash
-firebase deploy
-```
-
-This deploys both the frontend (Firebase Hosting) and backend (Cloud Functions).
+- Pure HTML/CSS/JavaScript (no frameworks)
+- [JSZip](https://stuk.github.io/jszip/) — unzips/rezips DOCX files in browser
+- [FileSaver.js](https://github.com/nicolo-ribaudo/FileSaver.js) — triggers file downloads
+- GitHub Pages — free static hosting
 
 ## Project Structure
 
 ```
-├── firebase.json          # Firebase configuration
-├── .firebaserc            # Firebase project link
-├── public/                # Frontend (Firebase Hosting)
-│   ├── index.html         # Main page
-│   ├── style.css          # Styles
-│   └── app.js             # Client-side logic
-└── functions/             # Backend (Cloud Functions)
-    ├── package.json       # Dependencies
-    ├── index.js           # Express API setup
-    └── docxUpdater.js     # Core DOCX update logic
+├── index.html     # Main page
+├── style.css      # Styles
+├── app.js         # All logic (drag-drop + DOCX processing)
+└── README.md
 ```
-
-## Limits
-
-- Max file size: 50MB per file
-- Max batch: 50 files at once
-- Firebase Cloud Functions free tier: 2 million invocations/month
-
-## Future Enhancements
-
-- Support for XLSX and PPTX templates
-- Network/SharePoint path support
-- User authentication
-- Processing history/logs
