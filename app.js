@@ -39,15 +39,21 @@ function setupDropZone(zone, type) {
             renderFileList('templateFiles', [templateFile]);
             zone.classList.add('has-files');
         } else {
-            targetFiles = files;
-            renderFileList('targetFiles', targetFiles);
-            zone.classList.add('has-files');
+            // Append new files, skip duplicates by name
+            const existingNames = new Set(targetFiles.map(f => f.name));
+            const newFiles = files.filter(f => !existingNames.has(f.name));
+            targetFiles = targetFiles.concat(newFiles);
+            renderTargetFileList();
+            if (targetFiles.length > 0) zone.classList.add('has-files');
         }
 
         checkReady();
     });
 
-    zone.addEventListener('click', () => {
+    zone.addEventListener('click', (e) => {
+        // Don't open file picker if clicking a remove or clear button
+        if (e.target.closest('.remove-btn') || e.target.closest('.clear-btn')) return;
+
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.docx';
@@ -59,9 +65,11 @@ function setupDropZone(zone, type) {
                 renderFileList('templateFiles', [templateFile]);
                 zone.classList.add('has-files');
             } else {
-                targetFiles = files;
-                renderFileList('targetFiles', targetFiles);
-                zone.classList.add('has-files');
+                const existingNames = new Set(targetFiles.map(f => f.name));
+                const newFiles = files.filter(f => !existingNames.has(f.name));
+                targetFiles = targetFiles.concat(newFiles);
+                renderTargetFileList();
+                if (targetFiles.length > 0) zone.classList.add('has-files');
             }
             checkReady();
         };
@@ -75,6 +83,38 @@ function renderFileList(containerId, files) {
         `<div class="file-item">${f.name}</div>`
     ).join('');
 }
+
+function renderTargetFileList() {
+    const container = document.getElementById('targetFiles');
+    if (targetFiles.length === 0) {
+        container.innerHTML = '';
+        targetZone.classList.remove('has-files');
+        return;
+    }
+    container.innerHTML =
+        `<div class="file-list-header">${targetFiles.length} file(s) <button class="clear-btn" onclick="clearTargets(event)">Clear all</button></div>` +
+        targetFiles.map((f, i) =>
+            `<div class="file-item">${f.name} <button class="remove-btn" onclick="removeTarget(event, ${i})">&#10005;</button></div>`
+        ).join('');
+}
+
+function removeTarget(e, index) {
+    e.stopPropagation();
+    targetFiles.splice(index, 1);
+    renderTargetFileList();
+    checkReady();
+}
+
+function clearTargets(e) {
+    e.stopPropagation();
+    targetFiles = [];
+    renderTargetFileList();
+    checkReady();
+}
+
+// Expose to onclick handlers
+window.removeTarget = removeTarget;
+window.clearTargets = clearTargets;
 
 function checkReady() {
     updateBtn.disabled = !(templateFile && targetFiles.length > 0);
@@ -90,25 +130,12 @@ function showStatus(message, type) {
 async function updateDocument(templateZip, targetBuffer) {
     const targetZip = await JSZip.loadAsync(targetBuffer);
 
-    // 1. Transfer styles (paragraph, character, table styles)
     await transferFile(templateZip, targetZip, 'word/styles.xml');
-
-    // 2. Transfer theme (fonts, colors)
     await transferFile(templateZip, targetZip, 'word/theme/theme1.xml');
-
-    // 3. Transfer numbering/list definitions
     await transferFile(templateZip, targetZip, 'word/numbering.xml');
-
-    // 4. Transfer section properties (margins, page size, orientation)
     await transferSectionProperties(templateZip, targetZip);
-
-    // 5. Transfer headers and footers + merge relationships safely
     await transferHeadersFootersSafe(templateZip, targetZip);
-
-    // 6. Strip comments from the document
     await stripComments(targetZip);
-
-    // 7. Accept/remove tracked changes (revisions) for a clean document
     await stripRevisions(targetZip);
 
     return await targetZip.generateAsync({ type: 'blob' });
@@ -122,89 +149,56 @@ async function transferFile(templateZip, targetZip, path) {
     }
 }
 
-/**
- * Removes all comments from the document.
- * - Deletes word/comments.xml and word/commentsExtended.xml
- * - Removes comment markers from document body
- * - Removes comment relationships from .rels
- * - Cleans up content types
- */
 async function stripComments(targetZip) {
-    // Remove comment XML files
     ['word/comments.xml', 'word/commentsExtended.xml', 'word/commentsIds.xml',
      'word/commentsExtensible.xml'].forEach(path => {
-        if (targetZip.file(path)) {
-            targetZip.remove(path);
-        }
+        if (targetZip.file(path)) targetZip.remove(path);
     });
 
-    // Remove comment rels files
-    ['word/_rels/comments.xml.rels'].forEach(path => {
-        if (targetZip.file(path)) {
-            targetZip.remove(path);
-        }
-    });
+    if (targetZip.file('word/_rels/comments.xml.rels')) {
+        targetZip.remove('word/_rels/comments.xml.rels');
+    }
 
-    // Remove comment markers from document.xml
     const docFile = targetZip.file('word/document.xml');
     if (docFile) {
         let docXml = await docFile.async('string');
-        // Remove <w:commentRangeStart>, <w:commentRangeEnd>, and <w:commentReference> tags
         docXml = docXml.replace(/<w:commentRangeStart[^>]*\/>/g, '');
         docXml = docXml.replace(/<w:commentRangeEnd[^>]*\/>/g, '');
         docXml = docXml.replace(/<w:commentReference[^>]*\/>/g, '');
-        // Remove entire <w:r> runs that only contain a commentReference
         docXml = docXml.replace(/<w:r[^>]*>\s*<w:rPr[^>]*\/>\s*<w:commentReference[^>]*\/>\s*<\/w:r>/g, '');
         docXml = docXml.replace(/<w:r>\s*<w:commentReference[^>]*\/>\s*<\/w:r>/g, '');
         targetZip.file('word/document.xml', docXml);
     }
 
-    // Remove comment relationships from document.xml.rels
     const relsFile = targetZip.file('word/_rels/document.xml.rels');
     if (relsFile) {
         let relsXml = await relsFile.async('string');
-        relsXml = relsXml.replace(
-            /<Relationship[^>]*Type="[^"]*\/comments[^"]*"[^>]*\/>/gi, ''
-        );
+        relsXml = relsXml.replace(/<Relationship[^>]*Type="[^"]*\/comments[^"]*"[^>]*\/>/gi, '');
         targetZip.file('word/_rels/document.xml.rels', relsXml);
     }
 
-    // Remove comment content types
     const ctFile = targetZip.file('[Content_Types].xml');
     if (ctFile) {
         let ctXml = await ctFile.async('string');
-        ctXml = ctXml.replace(
-            /<Override[^>]*PartName="[^"]*comments[^"]*"[^>]*\/>/gi, ''
-        );
+        ctXml = ctXml.replace(/<Override[^>]*PartName="[^"]*comments[^"]*"[^>]*\/>/gi, '');
         targetZip.file('[Content_Types].xml', ctXml);
     }
 }
 
-/**
- * Removes tracked changes (revisions) markup for a clean document.
- * Accepts insertions and removes deletions.
- */
 async function stripRevisions(targetZip) {
     const docFile = targetZip.file('word/document.xml');
     if (!docFile) return;
 
     let docXml = await docFile.async('string');
-
-    // Remove <w:del>...</w:del> entirely (deleted text goes away)
     docXml = docXml.replace(/<w:del\b[\s\S]*?<\/w:del>/g, '');
-
-    // Unwrap <w:ins>...</w:ins> (keep the inserted content, remove the ins wrapper)
     docXml = docXml.replace(/<w:ins\b[^>]*>/g, '');
     docXml = docXml.replace(/<\/w:ins>/g, '');
-
-    // Remove rPr revision markers
     docXml = docXml.replace(/<w:rPrChange[\s\S]*?<\/w:rPrChange>/g, '');
     docXml = docXml.replace(/<w:pPrChange[\s\S]*?<\/w:pPrChange>/g, '');
     docXml = docXml.replace(/<w:sectPrChange[\s\S]*?<\/w:sectPrChange>/g, '');
     docXml = docXml.replace(/<w:tblPrChange[\s\S]*?<\/w:tblPrChange>/g, '');
     docXml = docXml.replace(/<w:tcPrChange[\s\S]*?<\/w:tcPrChange>/g, '');
     docXml = docXml.replace(/<w:trPrChange[\s\S]*?<\/w:trPrChange>/g, '');
-
     targetZip.file('word/document.xml', docXml);
 }
 
@@ -218,7 +212,6 @@ async function transferHeadersFootersSafe(templateZip, targetZip) {
 
     if (templateHF.length === 0) return;
 
-    // Remove existing headers/footers from target
     const toRemove = [];
     targetZip.folder('word').forEach((relativePath) => {
         if (/^(header|footer)\d*\.xml$/.test(relativePath)) {
@@ -227,13 +220,11 @@ async function transferHeadersFootersSafe(templateZip, targetZip) {
     });
     toRemove.forEach(path => targetZip.remove(path));
 
-    // Copy header/footer XML files from template
     for (const relativePath of templateHF) {
         const content = await templateZip.file('word/' + relativePath).async('uint8array');
         targetZip.file('word/' + relativePath, content);
     }
 
-    // Copy header/footer relationship files
     for (const relativePath of templateHF) {
         const relsPath = 'word/_rels/' + relativePath + '.rels';
         const relsFile = templateZip.file(relsPath);
@@ -243,10 +234,7 @@ async function transferHeadersFootersSafe(templateZip, targetZip) {
         }
     }
 
-    // Merge header/footer rels into target's document.xml.rels
     await mergeHeaderFooterRels(templateZip, targetZip);
-
-    // Merge content types for headers/footers
     await mergeContentTypes(templateZip, targetZip, templateHF);
 }
 
@@ -259,12 +247,10 @@ async function mergeHeaderFooterRels(templateZip, targetZip) {
     let templateRels = await templateRelsFile.async('string');
     let targetRels = await targetRelsFile.async('string');
 
-    // Remove existing header/footer relationships from target
     targetRels = targetRels.replace(
         /<Relationship[^>]*Type="[^"]*\/(header|footer)"[^>]*\/>/gi, ''
     );
 
-    // Extract header/footer relationships from template
     const hfRelRegex = /<Relationship[^>]*Type="[^"]*\/(header|footer)"[^>]*\/>/gi;
     const hfRels = [];
     let match;
