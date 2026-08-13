@@ -6,8 +6,8 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #1a1a2e;
-    color: #eee;
+    background: #f5f5f5;
+    color: #333;
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -18,12 +18,26 @@ body {
     max-width: 800px;
     width: 90%;
     padding: 40px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.logo {
+    max-width: 160px;
+    height: auto;
 }
 
 h1 {
     text-align: center;
-    font-size: 2rem;
+    font-size: 1.8rem;
     margin-bottom: 8px;
+    color: #00AEEF;
 }
 
 .subtitle {
@@ -46,7 +60,7 @@ h1 {
 }
 
 .drop-zone {
-    border: 2px dashed #444;
+    border: 2px dashed #ccc;
     border-radius: 12px;
     padding: 40px 20px;
     text-align: center;
@@ -57,17 +71,18 @@ h1 {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    background: #fafafa;
 }
 
 .drop-zone:hover,
 .drop-zone.dragover {
-    border-color: #4a9eff;
-    background: rgba(74, 158, 255, 0.05);
+    border-color: #00AEEF;
+    background: rgba(0, 174, 239, 0.04);
 }
 
 .drop-zone.has-files {
-    border-color: #4caf50;
-    background: rgba(76, 175, 80, 0.05);
+    border-color: #00AEEF;
+    background: rgba(0, 174, 239, 0.04);
 }
 
 .drop-zone-icon {
@@ -79,17 +94,18 @@ h1 {
     font-size: 1rem;
     font-weight: 600;
     margin-bottom: 6px;
+    color: #333;
 }
 
 .drop-zone-hint {
     font-size: 0.8rem;
-    color: #666;
+    color: #999;
 }
 
 .file-list {
     margin-top: 12px;
     font-size: 0.85rem;
-    color: #aaa;
+    color: #666;
     max-height: 150px;
     overflow-y: auto;
     width: 100%;
@@ -97,7 +113,7 @@ h1 {
 
 .file-list .file-item {
     padding: 4px 8px;
-    background: rgba(255,255,255,0.05);
+    background: rgba(0, 174, 239, 0.06);
     border-radius: 4px;
     margin: 4px 0;
     display: flex;
@@ -118,7 +134,7 @@ h1 {
 .remove-btn {
     background: none;
     border: none;
-    color: #f44336;
+    color: #EF3340;
     cursor: pointer;
     font-size: 0.85rem;
     padding: 0 4px;
@@ -126,13 +142,13 @@ h1 {
 }
 
 .remove-btn:hover {
-    color: #ff6659;
+    color: #d42a36;
 }
 
 .clear-btn {
     background: none;
-    border: 1px solid #666;
-    color: #aaa;
+    border: 1px solid #ccc;
+    color: #888;
     cursor: pointer;
     font-size: 0.75rem;
     padding: 2px 8px;
@@ -140,8 +156,8 @@ h1 {
 }
 
 .clear-btn:hover {
-    border-color: #f44336;
-    color: #f44336;
+    border-color: #EF3340;
+    color: #EF3340;
 }
 
 .update-btn {
@@ -152,20 +168,20 @@ h1 {
     font-weight: 600;
     border: none;
     border-radius: 8px;
-    background: #4a9eff;
+    background: #EF3340;
     color: white;
     cursor: pointer;
     transition: all 0.3s ease;
 }
 
 .update-btn:disabled {
-    background: #333;
-    color: #666;
+    background: #ddd;
+    color: #999;
     cursor: not-allowed;
 }
 
 .update-btn:not(:disabled):hover {
-    background: #3a8eef;
+    background: #d42a36;
     transform: translateY(-1px);
 }
 
@@ -179,18 +195,21 @@ h1 {
 
 .status.info {
     display: block;
-    background: rgba(74, 158, 255, 0.1);
-    border: 1px solid #4a9eff;
+    background: rgba(0, 174, 239, 0.08);
+    border: 1px solid #00AEEF;
+    color: #007aa8;
 }
 
 .status.success {
     display: block;
-    background: rgba(76, 175, 80, 0.1);
+    background: rgba(76, 175, 80, 0.08);
     border: 1px solid #4caf50;
+    color: #2e7d32;
 }
 
 .status.error {
     display: block;
-    background: rgba(244, 67, 54, 0.1);
-    border: 1px solid #f44336;
+    background: rgba(239, 51, 64, 0.08);
+    border: 1px solid #EF3340;
+    color: #c62828;
 }
