@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOCX Template Updater</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>DOCX Template Updater</h1>
+        <p class="subtitle">Update document formatting without changing text content</p>
+
+        <div class="drop-zones">
+            <div class="drop-zone" id="templateZone">
+                <div class="drop-zone-icon">📄</div>
+                <div class="drop-zone-text">Drag & Drop Template DOCX</div>
+                <div class="drop-zone-hint">This is your modern template</div>
+                <div class="file-list" id="templateFiles"></div>
+            </div>
+
+            <div class="drop-zone" id="targetZone">
+                <div class="drop-zone-icon">📁</div>
+                <div class="drop-zone-text">Drag & Drop Target DOCX Files</div>
+                <div class="drop-zone-hint">Files to update (single or batch)</div>
+                <div class="file-list" id="targetFiles"></div>
+            </div>
+        </div>
+
+        <button id="updateBtn" class="update-btn" disabled>Update Documents</button>
+
+        <div class="status" id="status"></div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
