@@ -198,9 +198,96 @@ function serializeXml(doc) {
     return SERIALIZER.serializeToString(doc);
 }
 
+// ===== RA ID EXTRACTION & INJECTION =====
+
+/**
+ * Extracts the RA number from a filename.
+ * Supports: RA-022, RA 022, RA-001, RA-038, etc.
+ */
+function extractRaNumber(filename) {
+    const match = filename.match(/RA[- ]?(\d{3})/i);
+    return match ? match[1] : null;
+}
+
+/**
+ * Fixes RA ID# references in document body and headers/footers.
+ * - If "RA ID# NNN" exists anywhere, updates the number to match filename
+ * - If header contains "QA139-1 Risk Assessment Form" without "(RA ID# NNN)",
+ *   appends "(RA ID# NNN)" to it
+ */
+async function fixRaId(targetZip, targetFileName) {
+    const raNumber = extractRaNumber(targetFileName);
+    if (!raNumber) return;
+
+    const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+    const raIdText = '(RA ID# ' + raNumber + ')';
+
+    // Process document.xml and all headers/footers
+    const xmlFiles = ['word/document.xml'];
+    const allFiles = Object.keys(targetZip.files);
+    for (const filePath of allFiles) {
+        if (/^word\/(header|footer)\d*\.xml$/.test(filePath)) {
+            xmlFiles.push(filePath);
+        }
+    }
+
+    for (const filePath of xmlFiles) {
+        const file = targetZip.file(filePath);
+        if (!file) continue;
+        const xml = await file.async('string');
+        const doc = parseXml(xml);
+        let changed = false;
+
+        const textElements = doc.getElementsByTagNameNS(W_NS, 't');
+
+        // Pass 1: Fix existing "RA ID# NNN" references
+        for (let i = 0; i < textElements.length; i++) {
+            const el = textElements[i];
+            const text = el.textContent;
+            if (/RA\s*ID\s*#\s*\d{1,4}/i.test(text)) {
+                el.textContent = text.replace(
+                    /RA\s*ID\s*#\s*\d{1,4}/i,
+                    'RA ID# ' + raNumber
+                );
+                changed = true;
+            }
+        }
+
+        // Pass 2: If this is a header file, check if "Risk Assessment Form"
+        // exists but no "(RA ID#" — then append it
+        if (/^word\/header\d*\.xml$/.test(filePath)) {
+            let hasRiskAssessment = false;
+            let hasRaId = false;
+            let riskAssessmentElement = null;
+
+            for (let i = 0; i < textElements.length; i++) {
+                const text = textElements[i].textContent;
+                if (/Risk\s*Assessment\s*Form/i.test(text)) {
+                    hasRiskAssessment = true;
+                    riskAssessmentElement = textElements[i];
+                }
+                if (/RA\s*ID\s*#/i.test(text)) {
+                    hasRaId = true;
+                }
+            }
+
+            // If we found "Risk Assessment Form" but no "RA ID#", append it
+            if (hasRiskAssessment && !hasRaId && riskAssessmentElement) {
+                // Append " (RA ID# NNN)" to the text that contains "Risk Assessment Form"
+                riskAssessmentElement.textContent = riskAssessmentElement.textContent + ' ' + raIdText;
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            targetZip.file(filePath, serializeXml(doc));
+        }
+    }
+}
+
 // ===== DOCX UPDATE LOGIC =====
 
-async function updateDocument(templateZip, targetBuffer) {
+async function updateDocument(templateZip, targetBuffer, targetFileName) {
     const targetZip = await JSZip.loadAsync(targetBuffer);
 
     await stripComments(targetZip);
@@ -209,6 +296,9 @@ async function updateDocument(templateZip, targetBuffer) {
     await transferFile(templateZip, targetZip, 'word/theme/theme1.xml');
     await transferFile(templateZip, targetZip, 'word/numbering.xml');
     await transferHeadersFooters(templateZip, targetZip);
+
+    // Fix RA ID# to match the target filename
+    await fixRaId(targetZip, targetFileName);
 
     return await targetZip.generateAsync({ type: 'blob' });
 }
@@ -665,7 +755,7 @@ updateBtn.addEventListener('click', async () => {
 
         if (targetFiles.length === 1) {
             const targetBuffer = await targetFiles[0].arrayBuffer();
-            const updatedBlob = await updateDocument(templateZip, targetBuffer);
+            const updatedBlob = await updateDocument(templateZip, targetBuffer, targetFiles[0].name);
             const newName = targetFiles[0].name.replace('.docx', '_updated.docx');
             saveAs(updatedBlob, newName);
         } else {
@@ -673,7 +763,7 @@ updateBtn.addEventListener('click', async () => {
             for (let i = 0; i < targetFiles.length; i++) {
                 showStatus(`Processing ${i + 1} of ${targetFiles.length}...`, 'info');
                 const targetBuffer = await targetFiles[i].arrayBuffer();
-                const updatedBlob = await updateDocument(templateZip, targetBuffer);
+                const updatedBlob = await updateDocument(templateZip, targetBuffer, targetFiles[i].name);
                 const newName = targetFiles[i].name.replace('.docx', '_updated.docx');
                 outputZip.file(newName, updatedBlob);
             }
