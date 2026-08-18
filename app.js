@@ -9,6 +9,65 @@ const status = document.getElementById('status');
 setupDropZone(templateZone, 'template');
 setupDropZone(targetZone, 'target');
 
+// ===== MOTIVATIONAL QUOTES =====
+
+const quotes = [
+    "The secret of getting ahead is getting started. — Mark Twain",
+    "It always seems impossible until it's done. — Nelson Mandela",
+    "Success is not final, failure is not fatal: it is the courage to continue that counts. — Winston Churchill",
+    "Believe you can and you're halfway there. — Theodore Roosevelt",
+    "The only way to do great work is to love what you do. — Steve Jobs",
+    "Don't watch the clock; do what it does. Keep going. — Sam Levenson",
+    "Everything you've ever wanted is on the other side of fear. — George Addair",
+    "Hardships often prepare ordinary people for an extraordinary destiny. — C.S. Lewis",
+    "You are never too old to set another goal or to dream a new dream. — C.S. Lewis",
+    "Act as if what you do makes a difference. It does. — William James",
+    "What you get by achieving your goals is not as important as what you become by achieving your goals. — Zig Ziglar",
+    "The future belongs to those who believe in the beauty of their dreams. — Eleanor Roosevelt",
+    "In the middle of every difficulty lies opportunity. — Albert Einstein",
+    "Quality is not an act, it is a habit. — Aristotle",
+    "Do what you can, with what you have, where you are. — Theodore Roosevelt",
+    "Start where you are. Use what you have. Do what you can. — Arthur Ashe",
+    "Well done is better than well said. — Benjamin Franklin",
+    "The best time to plant a tree was 20 years ago. The second best time is now. — Chinese Proverb",
+    "Your limitation—it's only your imagination.",
+    "Great things never come from comfort zones.",
+    "Dream it. Wish it. Do it.",
+    "Don't stop when you're tired. Stop when you're done.",
+    "Little things make big days.",
+    "The harder you work for something, the greater you'll feel when you achieve it.",
+    "Productivity is never an accident. It is always the result of a commitment to excellence. — Paul J. Meyer",
+    "Focus on being productive instead of busy. — Tim Ferriss",
+    "You don't have to be great to start, but you have to start to be great. — Zig Ziglar",
+    "Success usually comes to those who are too busy to be looking for it. — Henry David Thoreau",
+    "Don't be afraid to give up the good to go for the great. — John D. Rockefeller",
+    "I find that the harder I work, the more luck I seem to have. — Thomas Jefferson"
+];
+
+let lastQuoteIndex = -1;
+
+function showRandomQuote() {
+    const quoteBox = document.getElementById('quoteBox');
+    const quoteText = document.getElementById('quoteText');
+    if (!quoteBox || !quoteText) return;
+
+    // Pick a random quote different from the last one
+    let index;
+    do {
+        index = Math.floor(Math.random() * quotes.length);
+    } while (index === lastQuoteIndex && quotes.length > 1);
+    lastQuoteIndex = index;
+
+    // Fade out, swap text, fade in
+    quoteBox.classList.add('fade');
+    setTimeout(() => {
+        quoteText.textContent = quotes[index];
+        quoteBox.classList.remove('fade');
+    }, 300);
+}
+
+// ===== DROP ZONE SETUP =====
+
 function setupDropZone(zone, type) {
     ['dragenter', 'dragover'].forEach(evt => {
         zone.addEventListener(evt, (e) => {
@@ -168,7 +227,6 @@ async function transferFile(templateZip, targetZip, path) {
 // ===== COMMENT STRIPPING =====
 
 async function stripComments(targetZip) {
-    // Remove all comment-related files
     const commentFiles = [
         'word/comments.xml', 'word/commentsExtended.xml',
         'word/commentsIds.xml', 'word/commentsExtensible.xml',
@@ -182,7 +240,6 @@ async function stripComments(targetZip) {
         if (targetZip.file(path)) targetZip.remove(path);
     });
 
-    // Collect all XML files to clean (document + headers + footers)
     const xmlFiles = ['word/document.xml'];
     targetZip.folder('word').forEach((path) => {
         if (/^(header|footer)\d*\.xml$/.test(path)) {
@@ -195,11 +252,9 @@ async function stripComments(targetZip) {
         if (!file) continue;
         let xml = await file.async('string');
 
-        // Use DOMParser for robust comment removal
         const doc = parseXml(xml);
         const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
-        // Remove comment range markers
         const tagNames = ['commentRangeStart', 'commentRangeEnd', 'commentReference', 'annotationRef'];
         for (const tagName of tagNames) {
             const elements = doc.getElementsByTagNameNS(W_NS, tagName);
@@ -208,20 +263,16 @@ async function stripComments(targetZip) {
             }
         }
 
-        // Remove w15:commentEx elements
         const w15Elements = doc.getElementsByTagName('w15:commentEx');
         while (w15Elements.length > 0) {
             w15Elements[0].parentNode.removeChild(w15Elements[0]);
         }
 
-        // Remove w16cid:commentId elements
         const w16Elements = doc.getElementsByTagName('w16cid:commentId');
         while (w16Elements.length > 0) {
             w16Elements[0].parentNode.removeChild(w16Elements[0]);
         }
 
-        // Remove <w:r> runs that only contain a commentReference (no <w:t>)
-        // After removing commentReference above, check for empty runs
         const runs = doc.getElementsByTagNameNS(W_NS, 'r');
         const runsToRemove = [];
         for (let i = 0; i < runs.length; i++) {
@@ -235,14 +286,12 @@ async function stripComments(targetZip) {
             const hasFldChar = run.getElementsByTagNameNS(W_NS, 'fldChar').length > 0;
             const hasInstrText = run.getElementsByTagNameNS(W_NS, 'instrText').length > 0;
 
-            // If run has no meaningful content, mark for removal
             if (!hasText && !hasDrawing && !hasPict && !hasBreak && !hasTab && !hasSym && !hasFldChar && !hasInstrText) {
-                // Check if it only has rPr (formatting) and nothing else useful
                 const children = run.childNodes;
                 let hasContent = false;
                 for (let j = 0; j < children.length; j++) {
                     const child = children[j];
-                    if (child.nodeType === 1) { // Element node
+                    if (child.nodeType === 1) {
                         const localName = child.localName;
                         if (localName !== 'rPr') {
                             hasContent = true;
@@ -262,7 +311,6 @@ async function stripComments(targetZip) {
         targetZip.file(filePath, serializeXml(doc));
     }
 
-    // Clean relationships using DOMParser
     const relsFile = targetZip.file('word/_rels/document.xml.rels');
     if (relsFile) {
         const relsXml = await relsFile.async('string');
@@ -281,7 +329,6 @@ async function stripComments(targetZip) {
         targetZip.file('word/_rels/document.xml.rels', serializeXml(doc));
     }
 
-    // Clean content types using DOMParser
     const ctFile = targetZip.file('[Content_Types].xml');
     if (ctFile) {
         const ctXml = await ctFile.async('string');
@@ -319,13 +366,11 @@ async function stripRevisions(targetZip) {
         const doc = parseXml(xml);
         const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
-        // Remove <w:del> elements entirely (deleted text goes away)
         let dels = doc.getElementsByTagNameNS(W_NS, 'del');
         while (dels.length > 0) {
             dels[0].parentNode.removeChild(dels[0]);
         }
 
-        // Unwrap <w:ins> (keep children, remove wrapper)
         let ins = doc.getElementsByTagNameNS(W_NS, 'ins');
         while (ins.length > 0) {
             const insEl = ins[0];
@@ -336,13 +381,11 @@ async function stripRevisions(targetZip) {
             parent.removeChild(insEl);
         }
 
-        // Remove <w:moveFrom> entirely
         let moveFroms = doc.getElementsByTagNameNS(W_NS, 'moveFrom');
         while (moveFroms.length > 0) {
             moveFroms[0].parentNode.removeChild(moveFroms[0]);
         }
 
-        // Unwrap <w:moveTo>
         let moveTos = doc.getElementsByTagNameNS(W_NS, 'moveTo');
         while (moveTos.length > 0) {
             const el = moveTos[0];
@@ -353,7 +396,6 @@ async function stripRevisions(targetZip) {
             parent.removeChild(el);
         }
 
-        // Remove property change elements
         const changeTypes = ['rPrChange', 'pPrChange', 'sectPrChange',
             'tblPrChange', 'tcPrChange', 'trPrChange', 'tblGridChange'];
         for (const changeType of changeTypes) {
@@ -363,7 +405,6 @@ async function stripRevisions(targetZip) {
             }
         }
 
-        // Remove move range markers
         const moveMarkers = ['moveFromRangeStart', 'moveFromRangeEnd',
             'moveToRangeStart', 'moveToRangeEnd'];
         for (const marker of moveMarkers) {
@@ -380,13 +421,12 @@ async function stripRevisions(targetZip) {
 // ===== HEADER/FOOTER TRANSFER =====
 
 async function transferHeadersFooters(templateZip, targetZip) {
-    // --- Step 1: Parse template's document.xml.rels to find header/footer entries ---
     const templateRelsFile = templateZip.file('word/_rels/document.xml.rels');
     if (!templateRelsFile) return;
     const templateRelsXml = await templateRelsFile.async('string');
     const templateRelsDoc = parseXml(templateRelsXml);
 
-    const templateHFEntries = []; // {originalId, target, typeUrl, isHeader}
+    const templateHFEntries = [];
     const templateRelEls = templateRelsDoc.getElementsByTagName('Relationship');
     for (let i = 0; i < templateRelEls.length; i++) {
         const el = templateRelEls[i];
@@ -403,14 +443,12 @@ async function transferHeadersFooters(templateZip, targetZip) {
 
     if (templateHFEntries.length === 0) return;
 
-    // --- Step 2: Parse target's document.xml.rels ---
     const targetRelsFile = targetZip.file('word/_rels/document.xml.rels');
     if (!targetRelsFile) return;
     const targetRelsXml = await targetRelsFile.async('string');
     const targetRelsDoc = parseXml(targetRelsXml);
     const targetRelsRoot = targetRelsDoc.documentElement;
 
-    // Find max rId in target
     let maxId = 0;
     const targetRelEls = targetRelsDoc.getElementsByTagName('Relationship');
     for (let i = 0; i < targetRelEls.length; i++) {
@@ -419,7 +457,6 @@ async function transferHeadersFooters(templateZip, targetZip) {
         if (!isNaN(num) && num > maxId) maxId = num;
     }
 
-    // Remove existing header/footer relationships from target
     const toRemoveRels = [];
     for (let i = 0; i < targetRelEls.length; i++) {
         const typeUrl = targetRelEls[i].getAttribute('Type') || '';
@@ -431,7 +468,6 @@ async function transferHeadersFooters(templateZip, targetZip) {
         el.parentNode.removeChild(el);
     }
 
-    // --- Step 3: Remove existing header/footer files from target ---
     const existingHF = [];
     targetZip.folder('word').forEach((path) => {
         if (/^(header|footer)\d*\.xml$/.test(path)) {
@@ -444,15 +480,13 @@ async function transferHeadersFooters(templateZip, targetZip) {
         if (targetZip.file(relsPath)) targetZip.remove(relsPath);
     }
 
-    // --- Step 4: Copy template header/footer files and assign fresh rIds ---
-    const idMapping = {}; // template originalId -> new rId
+    const idMapping = {};
 
     for (const entry of templateHFEntries) {
         maxId++;
         const newId = 'rId' + maxId;
         idMapping[entry.originalId] = newId;
 
-        // Add relationship to target rels
         const newRel = targetRelsDoc.createElementNS(
             targetRelsRoot.namespaceURI, 'Relationship'
         );
@@ -461,7 +495,6 @@ async function transferHeadersFooters(templateZip, targetZip) {
         newRel.setAttribute('Target', entry.target);
         targetRelsRoot.appendChild(newRel);
 
-        // Copy header/footer XML file
         const srcPath = 'word/' + entry.target;
         const srcFile = templateZip.file(srcPath);
         if (srcFile) {
@@ -469,7 +502,6 @@ async function transferHeadersFooters(templateZip, targetZip) {
             targetZip.file(srcPath, content);
         }
 
-        // Copy its .rels file
         const srcRelsPath = 'word/_rels/' + entry.target + '.rels';
         const srcRelsFile = templateZip.file(srcRelsPath);
         if (srcRelsFile) {
@@ -478,10 +510,8 @@ async function transferHeadersFooters(templateZip, targetZip) {
         }
     }
 
-    // Save updated target rels
     targetZip.file('word/_rels/document.xml.rels', serializeXml(targetRelsDoc));
 
-    // --- Step 5: Copy media files referenced by headers/footers ---
     for (const entry of templateHFEntries) {
         const relsPath = 'word/_rels/' + entry.target + '.rels';
         const relsFile = templateZip.file(relsPath);
@@ -501,14 +531,12 @@ async function transferHeadersFooters(templateZip, targetZip) {
         }
     }
 
-    // --- Step 6: Update [Content_Types].xml ---
     const ctFile = targetZip.file('[Content_Types].xml');
     if (ctFile) {
         const ctXml = await ctFile.async('string');
         const ctDoc = parseXml(ctXml);
         const ctRoot = ctDoc.documentElement;
 
-        // Remove existing header/footer overrides
         const overrides = ctDoc.getElementsByTagName('Override');
         const toRemoveCT = [];
         for (let i = 0; i < overrides.length; i++) {
@@ -521,7 +549,6 @@ async function transferHeadersFooters(templateZip, targetZip) {
             el.parentNode.removeChild(el);
         }
 
-        // Add new overrides
         const addedParts = new Set();
         for (const entry of templateHFEntries) {
             const partName = '/word/' + entry.target;
@@ -541,7 +568,6 @@ async function transferHeadersFooters(templateZip, targetZip) {
         targetZip.file('[Content_Types].xml', serializeXml(ctDoc));
     }
 
-    // --- Step 7: Update header/footer references in ALL sectPr elements ---
     const templateDocFile = templateZip.file('word/document.xml');
     if (!templateDocFile) return;
     const templateDocXml = await templateDocFile.async('string');
@@ -550,12 +576,10 @@ async function transferHeadersFooters(templateZip, targetZip) {
     const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
     const R_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 
-    // Get ALL header/footer references from template's last sectPr
     const templateSectPrs = templateDocDoc.getElementsByTagNameNS(W_NS, 'sectPr');
     if (templateSectPrs.length === 0) return;
     const templateSectPr = templateSectPrs[templateSectPrs.length - 1];
 
-    // Collect template's headerReference and footerReference elements
     const templateRefs = [];
     for (let i = 0; i < templateSectPr.childNodes.length; i++) {
         const child = templateSectPr.childNodes[i];
@@ -569,7 +593,6 @@ async function transferHeadersFooters(templateZip, targetZip) {
         }
     }
 
-    // Also collect page layout elements from template sectPr
     const layoutTagNames = ['pgSz', 'pgMar', 'cols', 'docGrid', 'pgBorders', 'lnNumType', 'pgNumType'];
     const templateLayoutXmls = {};
     for (const tagName of layoutTagNames) {
@@ -579,7 +602,6 @@ async function transferHeadersFooters(templateZip, targetZip) {
         }
     }
 
-    // Now update target document.xml
     const targetDocFile = targetZip.file('word/document.xml');
     if (!targetDocFile) return;
     const targetDocXml = await targetDocFile.async('string');
@@ -590,7 +612,6 @@ async function transferHeadersFooters(templateZip, targetZip) {
     for (let s = 0; s < targetSectPrs.length; s++) {
         const sectPr = targetSectPrs[s];
 
-        // Remove existing headerReference and footerReference elements
         const toRemoveHF = [];
         for (let i = 0; i < sectPr.childNodes.length; i++) {
             const child = sectPr.childNodes[i];
@@ -603,13 +624,11 @@ async function transferHeadersFooters(templateZip, targetZip) {
             sectPr.removeChild(el);
         }
 
-        // Add template's header/footer references with remapped rIds
         for (const ref of templateRefs) {
             const newEl = targetDocDoc.createElementNS(W_NS, 'w:' + ref.tagName);
             newEl.setAttributeNS(W_NS, 'w:type', ref.type);
             const newRid = idMapping[ref.originalRid] || ref.originalRid;
             newEl.setAttributeNS(R_NS, 'r:id', newRid);
-            // Insert before first child to keep proper order
             if (sectPr.firstChild) {
                 sectPr.insertBefore(newEl, sectPr.firstChild);
             } else {
@@ -617,15 +636,12 @@ async function transferHeadersFooters(templateZip, targetZip) {
             }
         }
 
-        // Replace page layout properties
         for (const tagName of layoutTagNames) {
-            // Remove existing
             const existing = sectPr.getElementsByTagNameNS(W_NS, tagName);
             while (existing.length > 0) {
                 sectPr.removeChild(existing[0]);
             }
 
-            // Add from template
             if (templateLayoutXmls[tagName]) {
                 const tempDoc = parseXml(templateLayoutXmls[tagName]);
                 const imported = targetDocDoc.importNode(tempDoc.documentElement, true);
@@ -644,6 +660,7 @@ updateBtn.addEventListener('click', async () => {
 
     updateBtn.disabled = true;
     showStatus('Processing documents...', 'info');
+    showRandomQuote();
 
     try {
         const templateBuffer = await templateFile.arrayBuffer();
