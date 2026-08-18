@@ -41,7 +41,13 @@ const quotes = [
     "You don't have to be great to start, but you have to start to be great.",
     "Success usually comes to those who are too busy to be looking for it.",
     "Don't be afraid to give up the good to go for the great.",
-    "I find that the harder I work, the more luck I seem to have."
+    "I find that the harder I work, the more luck I seem to have.",
+    "Rawr",
+    "Keep going Big Dawg",
+    "Did you know? Michael Valencia once saved the world?",
+    "You miss 100% of the shots you don't take",
+    "HR is always watching",
+    "Only you can prevent forest fires"
 ];
 
 let lastQuoteIndex = -1;
