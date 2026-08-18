@@ -12,36 +12,36 @@ setupDropZone(targetZone, 'target');
 // ===== MOTIVATIONAL QUOTES =====
 
 const quotes = [
-    "The secret of getting ahead is getting started. — Mark Twain",
-    "It always seems impossible until it's done. — Nelson Mandela",
-    "Success is not final, failure is not fatal: it is the courage to continue that counts. — Winston Churchill",
-    "Believe you can and you're halfway there. — Theodore Roosevelt",
-    "The only way to do great work is to love what you do. — Steve Jobs",
-    "Don't watch the clock; do what it does. Keep going. — Sam Levenson",
-    "Everything you've ever wanted is on the other side of fear. — George Addair",
-    "Hardships often prepare ordinary people for an extraordinary destiny. — C.S. Lewis",
-    "You are never too old to set another goal or to dream a new dream. — C.S. Lewis",
-    "Act as if what you do makes a difference. It does. — William James",
-    "What you get by achieving your goals is not as important as what you become by achieving your goals. — Zig Ziglar",
-    "The future belongs to those who believe in the beauty of their dreams. — Eleanor Roosevelt",
-    "In the middle of every difficulty lies opportunity. — Albert Einstein",
-    "Quality is not an act, it is a habit. — Aristotle",
-    "Do what you can, with what you have, where you are. — Theodore Roosevelt",
-    "Start where you are. Use what you have. Do what you can. — Arthur Ashe",
-    "Well done is better than well said. — Benjamin Franklin",
-    "The best time to plant a tree was 20 years ago. The second best time is now. — Chinese Proverb",
+    "The secret of getting ahead is getting started.",
+    "It always seems impossible until it's done.",
+    "Success is not final, failure is not fatal: it is the courage to continue that counts.",
+    "Believe you can and you're halfway there.",
+    "The only way to do great work is to love what you do.",
+    "Don't watch the clock; do what it does. Keep going.",
+    "Everything you've ever wanted is on the other side of fear.",
+    "Hardships often prepare ordinary people for an extraordinary destiny.",
+    "You are never too old to set another goal or to dream a new dream.",
+    "Act as if what you do makes a difference. It does.",
+    "What you get by achieving your goals is not as important as what you become by achieving your goals.",
+    "The future belongs to those who believe in the beauty of their dreams.",
+    "In the middle of every difficulty lies opportunity.",
+    "Quality is not an act, it is a habit.",
+    "Do what you can, with what you have, where you are.",
+    "Start where you are. Use what you have. Do what you can.",
+    "Well done is better than well said.",
+    "The best time to plant a tree was 20 years ago. The second best time is now.",
     "Your limitation—it's only your imagination.",
     "Great things never come from comfort zones.",
     "Dream it. Wish it. Do it.",
     "Don't stop when you're tired. Stop when you're done.",
     "Little things make big days.",
     "The harder you work for something, the greater you'll feel when you achieve it.",
-    "Productivity is never an accident. It is always the result of a commitment to excellence. — Paul J. Meyer",
-    "Focus on being productive instead of busy. — Tim Ferriss",
-    "You don't have to be great to start, but you have to start to be great. — Zig Ziglar",
-    "Success usually comes to those who are too busy to be looking for it. — Henry David Thoreau",
-    "Don't be afraid to give up the good to go for the great. — John D. Rockefeller",
-    "I find that the harder I work, the more luck I seem to have. — Thomas Jefferson"
+    "Productivity is never an accident. It is always the result of a commitment to excellence.",
+    "Focus on being productive instead of busy.",
+    "You don't have to be great to start, but you have to start to be great.",
+    "Success usually comes to those who are too busy to be looking for it.",
+    "Don't be afraid to give up the good to go for the great.",
+    "I find that the harder I work, the more luck I seem to have."
 ];
 
 let lastQuoteIndex = -1;
@@ -51,17 +51,15 @@ function showRandomQuote() {
     const quoteText = document.getElementById('quoteText');
     if (!quoteBox || !quoteText) return;
 
-    // Pick a random quote different from the last one
     let index;
     do {
         index = Math.floor(Math.random() * quotes.length);
     } while (index === lastQuoteIndex && quotes.length > 1);
     lastQuoteIndex = index;
 
-    // Fade out, swap text, fade in
     quoteBox.classList.add('fade');
     setTimeout(() => {
-        quoteText.textContent = quotes[index];
+        quoteText.textContent = '"' + quotes[index] + '" — Michael Valencia';
         quoteBox.classList.remove('fade');
     }, 300);
 }
@@ -199,18 +197,11 @@ function serializeXml(doc) {
 async function updateDocument(templateZip, targetBuffer) {
     const targetZip = await JSZip.loadAsync(targetBuffer);
 
-    // 1. Strip comments FIRST
     await stripComments(targetZip);
-
-    // 2. Strip tracked changes
     await stripRevisions(targetZip);
-
-    // 3. Transfer styles, theme, numbering (simple file copy)
     await transferFile(templateZip, targetZip, 'word/styles.xml');
     await transferFile(templateZip, targetZip, 'word/theme/theme1.xml');
     await transferFile(templateZip, targetZip, 'word/numbering.xml');
-
-    // 4. Transfer headers/footers using proper XML parsing
     await transferHeadersFooters(templateZip, targetZip);
 
     return await targetZip.generateAsync({ type: 'blob' });
