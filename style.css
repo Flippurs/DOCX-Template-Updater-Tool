@@ -185,6 +185,34 @@ h1 {
     transform: translateY(-1px);
 }
 
+.quote-box {
+    margin-top: 20px;
+    padding: 16px 20px;
+    background: rgba(0, 174, 239, 0.05);
+    border-left: 4px solid #00AEEF;
+    border-radius: 0 8px 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: opacity 0.3s ease;
+}
+
+.quote-icon {
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+.quote-text {
+    font-size: 0.9rem;
+    color: #555;
+    font-style: italic;
+    line-height: 1.4;
+}
+
+.quote-box.fade {
+    opacity: 0;
+}
+
 .status {
     margin-top: 20px;
     padding: 16px;
